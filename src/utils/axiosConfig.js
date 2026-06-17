@@ -12,17 +12,25 @@ const axiosInstance = axios.create({
 // Request interceptor - add token to every request
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Try to get token from localStorage (check both user and admin)
-    let token = localStorage.getItem('token') || localStorage.getItem('adminToken');
+    // Skip adding token for auth routes (registration, login, etc.)
+    const isAuthRoute = config.url?.includes('/auth/') || 
+                        config.url?.includes('/register') || 
+                        config.url?.includes('/login');
     
-    // For admin routes, prefer admin token
-    if (config.url?.includes('/admin')) {
-      token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+    if (!isAuthRoute) {
+      // Try to get token from localStorage (check both user and admin)
+      let token = localStorage.getItem('token') || localStorage.getItem('adminToken');
+      
+      // For admin routes, prefer admin token
+      if (config.url?.includes('/admin')) {
+        token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+      }
+      
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
     return config;
   },
   (error) => {
@@ -40,21 +48,28 @@ axiosInstance.interceptors.response.use(
     if (error.response?.status === 401) {
       const url = error.config?.url || '';
       
-      // If it's an admin route, clear admin token
-      if (url.includes('/admin')) {
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('adminUser');
-        // Only redirect if we're on an admin page
-        if (window.location.pathname.includes('/admin')) {
-          window.location.href = '/admin-login';
-        }
-      } else {
-        // Clear user token
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        // Only redirect if we're on a user page
-        if (!window.location.pathname.includes('/admin')) {
-          window.location.href = '/login';
+      // Skip redirect for auth routes
+      const isAuthRoute = url.includes('/auth/') || 
+                          url.includes('/register') || 
+                          url.includes('/login');
+      
+      if (!isAuthRoute) {
+        // If it's an admin route, clear admin token
+        if (url.includes('/admin')) {
+          localStorage.removeItem('adminToken');
+          localStorage.removeItem('adminUser');
+          // Only redirect if we're on an admin page
+          if (window.location.pathname.includes('/admin')) {
+            window.location.href = '/admin-login';
+          }
+        } else {
+          // Clear user token
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          // Only redirect if we're on a user page
+          if (!window.location.pathname.includes('/admin')) {
+            window.location.href = '/login';
+          }
         }
       }
     }
