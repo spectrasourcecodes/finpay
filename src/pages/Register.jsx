@@ -121,7 +121,7 @@ const Register = () => {
       phone: formData.phone,
       password: formData.password
     });
-    if (result.success) navigate('/dashboard');
+    if (result.status == 200) navigate('/dashboard');
     setLoading(false);
   };
 
