@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance
 const axiosInstance = axios.create({
-  baseURL: '/api',
+  baseURL: 'https://finpay-api.onrender.com/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
