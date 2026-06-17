@@ -80,17 +80,63 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const response = await axiosInstance.post('/auth/register', userData);
-      const { user: newUser, token: authToken } = response.data.data;
       
-      setUser(newUser);
-      setIsAuthenticated(true);
+      // Handle different response structures
+      let newUser = null;
+      let authToken = null;
       
-      localStorage.setItem('token', authToken);
-      localStorage.setItem('user', JSON.stringify(newUser));
+      // Check if response has data property
+      if (response.data.data) {
+        newUser = response.data.data.user || response.data.data;
+        authToken = response.data.data.token;
+      } 
+      // Check if response has user directly
+      else if (response.data.user) {
+        newUser = response.data.user;
+        authToken = response.data.token;
+      }
+      // Check if response itself is the user object
+      else if (response.data._id || response.data.id) {
+        newUser = response.data;
+        authToken = response.data.token;
+      }
       
-      toast.success('Registration successful!');
-      return { success: true, user: newUser };
+      // If we have user data, proceed with authentication
+      if (newUser) {
+        setUser(newUser);
+        setIsAuthenticated(true);
+        
+        if (authToken) {
+          localStorage.setItem('token', authToken);
+        }
+        localStorage.setItem('user', JSON.stringify(newUser));
+        
+        toast.success(`Welcome to FinPay, ${newUser.fullName || 'User'}!`);
+        return { success: true, user: newUser };
+      }
+      
+      // If registration was successful but no user data returned
+      if (response.data.success === true) {
+        toast.success('Registration successful!');
+        return { success: true };
+      }
+      
+      // If we reach here, the response format is unexpected
+      console.error('Unexpected response format:', response.data);
+      toast.error('Registration successful but unexpected response format');
+      return { success: false, message: 'Unexpected response format' };
+      
     } catch (error) {
+      // Check if user already exists (409 Conflict)
+      if (error.response?.status === 409) {
+        toast.error('User already exists. Please log in instead.');
+        return { 
+          success: false, 
+          message: 'User already exists',
+          exists: true 
+        };
+      }
+      
       const message = error.response?.data?.message || 'Registration failed';
       toast.error(message);
       return { success: false, message };
